@@ -1,0 +1,250 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: #0b0d10;
+  color: #e6e8eb;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+.app-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.app-header .subtitle {
+  color: #8a9099;
+  font-size: 13px;
+  max-width: 720px;
+}
+
+.toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: #14171b;
+  border: 1px solid #1e232a;
+  border-radius: 10px;
+}
+
+.toc-title {
+  width: 100%;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8a9099;
+  margin-bottom: 4px;
+}
+
+.toc a {
+  color: #9ec5ff;
+  text-decoration: none;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #181c22;
+  border: 1px solid #232932;
+}
+
+.toc a:hover {
+  background: #1f252d;
+}
+
+.section {
+  margin-top: 32px;
+}
+
+.section-header {
+  margin: 0 0 14px;
+}
+
+.section-header h2 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.section-header p {
+  margin: 0;
+  font-size: 12px;
+  color: #8a9099;
+  line-height: 1.5;
+}
+
+.panel {
+  background: #14171b;
+  border: 1px solid #1e232a;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 18px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.panel-header h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.panel-header .desc {
+  font-size: 12px;
+  color: #8a9099;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.panel-header .sig {
+  font-size: 11px;
+  color: #6d737c;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  margin: 0;
+}
+
+.fields {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.field label {
+  display: block;
+  font-size: 12px;
+  color: #9da3ad;
+  margin-bottom: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.field label .optional {
+  color: #6d737c;
+  font-style: italic;
+  font-weight: normal;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  background: #0e1115;
+  color: #e6e8eb;
+  border: 1px solid #232932;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  resize: vertical;
+}
+
+.field input:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: #3b5bdb;
+}
+
+.field textarea {
+  min-height: 64px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+button {
+  background: #3b5bdb;
+  color: white;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #4a6ae6;
+}
+
+button.secondary {
+  background: #232932;
+  color: #c5c9d0;
+}
+
+button.secondary:hover {
+  background: #2c333d;
+}
+
+.output {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #0e1115;
+  border: 1px solid #232932;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.output.error {
+  border-color: #7a2a3b;
+  background: #1a0e12;
+  color: #ffb4c0;
+}
+
+.output.success {
+  border-color: #2f5b3a;
+}
+
+.output-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  margin-bottom: 6px;
+}
+
+.output-header span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8a9099;
+}
