@@ -11,12 +11,10 @@
 // methods marked INFERRED is guessed from the C-FFI arity and analogous
 // wrappers — verify against the SDK reference before relying on them.
 
-import '../pkg/rust_wallet_sdk.js';
-// vite-plugin-wasm resolves the runtime; TS picks up the type surface from
-// rust_wallet_sdk_bg.wasm.d.ts that lives alongside the .wasm file. We
-// re-cast to a minimal interface so we don't have to enumerate every
-// wallet_* export name here.
-import * as wasmRaw from '../pkg/rust_wallet_sdk_bg.wasm';
+// We delegate to sdk-runtime so the header bar can swap in an uploaded build
+// at runtime. Reads always go through the proxy → getCurrent().wasm, so
+// existing call-sites (`wasm.foo(...)`, `wasm.memory.buffer`) keep working.
+import { getCurrent } from './sdk-runtime';
 
 type FFIFn = (...args: (number | bigint)[]) => number;
 
@@ -30,7 +28,11 @@ type WasmExports = {
   [k: string]: unknown;
 };
 
-const wasm = wasmRaw as unknown as WasmExports;
+const wasm = new Proxy({} as WasmExports, {
+  get(_target, prop) {
+    return (getCurrent().wasm as unknown as Record<string | symbol, unknown>)[prop];
+  },
+}) as WasmExports;
 
 const ffi = (name: string): FFIFn => {
   const fn = wasm[name];

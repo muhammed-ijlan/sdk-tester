@@ -1,14 +1,16 @@
 import { SECTIONS } from './functions';
 import { SdkPanel } from './SdkPanel';
+import { SdkSourceBar } from './SdkSourceBar';
 
 export const App = () => (
   <div className="app">
+    <SdkSourceBar />
     <header className="app-header">
       <div>
         <h1>rust_wallet_sdk — Tester</h1>
         <div className="subtitle">
-          Standalone playground for the WASM bindings under <code>./pkg/</code>. Replace the files there to test a new
-          SDK build.
+          Standalone playground for the WASM bindings under <code>./pkg/</code>. Drop a fresh pkg/ folder in the bar
+          above to hot-swap the build, or replace the files on disk for a permanent change.
         </div>
       </div>
     </header>

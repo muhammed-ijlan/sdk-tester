@@ -19,7 +19,136 @@ body {
 .app {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 32px 24px 80px;
+  padding: 0 24px 80px;
+}
+
+.sdk-bar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  margin: 0 -24px 24px;
+  padding: 12px 24px;
+  background: rgba(14, 17, 21, 0.94);
+  backdrop-filter: saturate(180%) blur(8px);
+  border-bottom: 1px solid #232932;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.sdk-bar.drag-over {
+  border-bottom-color: #3b5bdb;
+  background: rgba(20, 28, 60, 0.96);
+}
+
+.sdk-bar.busy {
+  opacity: 0.85;
+}
+
+.sdk-bar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.sdk-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: #c5c9d0;
+}
+
+.sdk-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.sdk-badge.bundled {
+  background: #232932;
+  color: #9da3ad;
+}
+
+.sdk-badge.uploaded {
+  background: #2f5b3a;
+  color: #b8f0c5;
+}
+
+.sdk-info {
+  color: #9da3ad;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.sdk-info code {
+  background: #181c22;
+  border: 1px solid #232932;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #e6e8eb;
+}
+
+.sdk-info-sep {
+  margin: 0 6px;
+  color: #4a4f57;
+}
+
+.sdk-bar-right {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sdk-bar-right button {
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.sdk-bar-error {
+  margin-top: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #1a0e12;
+  border: 1px solid #7a2a3b;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #ffd4dc;
+  line-height: 1.5;
+}
+
+.sdk-bar-error-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #ff8a96;
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+
+.sdk-bar-error-dismiss {
+  margin-left: auto;
+  background: transparent;
+  color: #ffd4dc;
+  border: 0;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
 }
 
 .app-header {

@@ -1,5 +1,37 @@
 import { CryptoSDK } from './CryptoSDK';
-import * as sdk from '../pkg/rust_wallet_sdk.js';
+import { getCurrent } from './sdk-runtime';
+
+// Proxy through sdk-runtime so the camelCase bindings panel tracks the
+// currently-loaded build (bundled or uploaded).
+const sdk = new Proxy({} as Record<string, (...args: unknown[]) => unknown>, {
+  get(_target, prop) {
+    return (getCurrent().bindings as Record<string | symbol, unknown>)[prop];
+  },
+}) as Record<string, (...args: unknown[]) => unknown> & {
+  utilEncryptString: (text: string, password: string) => string;
+  utilDecryptString: (packed: string, password: string) => string;
+  encrypt: (text: string, password: string) => string;
+  decrypt: (env: string, password: string) => string;
+  changePassword: (env: string, oldP: string, newP: string) => string;
+  generateAddressFromXpub: (
+    xpubEth: string,
+    xpubTron: string,
+    xpubBtc: string,
+    mnemonic: string | null,
+    index: number,
+    chainId: bigint | null,
+  ) => string;
+  generateMnemonic: () => string;
+  createNewVault: (
+    password: string,
+    biometricKey: string | null,
+    biometricId: string | null,
+    biometricLabel: string | null,
+  ) => string;
+  verifyPassword: (vaultJson: string, password: string) => string;
+  createDeterministicWalletId: (input: string) => string;
+  createAppKeystore: (password: string) => string;
+};
 
 export type FieldType = 'text' | 'textarea' | 'password' | 'number';
 
