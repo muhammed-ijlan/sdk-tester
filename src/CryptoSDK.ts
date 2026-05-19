@@ -40,6 +40,73 @@ const ffi = (name: string): FFIFn => {
   return fn as FFIFn;
 };
 
+export type WasmCallArg = {
+  slot: string;
+  value: number | string;
+  hex?: string;
+};
+
+// Raised when a wasm export throws. Captures function name, slot-labelled
+// args, and whether the underlying cause was a WASM `unreachable` trap
+// (which is what JS sees for *every* uncaught Rust panic, since this
+// pkg/ build doesn't install console_error_panic_hook).
+export class WasmCallError extends Error {
+  readonly wasmName: string;
+  readonly args: WasmCallArg[];
+  readonly rawCause: unknown;
+  readonly causeMessage: string;
+  readonly causeStack?: string;
+  readonly isUnreachable: boolean;
+
+  constructor(
+    wasmName: string,
+    rawArgs: Array<number | bigint>,
+    argLabels: string[] | undefined,
+    cause: unknown,
+  ) {
+    const causeMessage = cause instanceof Error ? cause.message : String(cause);
+    const isUnreachable = /unreachable/i.test(causeMessage);
+    const args: WasmCallArg[] = rawArgs.map((v, i) => ({
+      slot: argLabels?.[i] ?? String.fromCharCode(97 + i),
+      value: typeof v === 'bigint' ? v.toString() : v,
+      hex: typeof v === 'number' ? '0x' + (v >>> 0).toString(16) : undefined,
+    }));
+    const header = isUnreachable
+      ? `${wasmName} → WASM unreachable trap (Rust panicked — pkg/ has no panic_hook so the Rust message is lost)`
+      : `${wasmName} threw: ${causeMessage}`;
+    super(header);
+    this.name = 'WasmCallError';
+    this.wasmName = wasmName;
+    this.args = args;
+    this.rawCause = cause;
+    this.causeMessage = causeMessage;
+    this.causeStack = cause instanceof Error ? cause.stack : undefined;
+    this.isUnreachable = isUnreachable;
+  }
+}
+
+const callFfi = (
+  name: string,
+  args: Array<number | bigint>,
+  argLabels?: string[],
+): number => {
+  try {
+    return ffi(name)(...args);
+  } catch (cause) {
+    const err = new WasmCallError(name, args, argLabels, cause);
+    // Rich console diagnostic — grouped so it's collapsible.
+    const style = err.isUnreachable
+      ? 'color:#ff5252; font-weight:bold'
+      : 'color:#ffa726; font-weight:bold';
+    console.groupCollapsed(`%c[wasm] ${name} threw${err.isUnreachable ? ' — unreachable' : ''}`, style);
+    console.error('cause:', cause);
+    if (err.causeStack) console.log('stack:', err.causeStack);
+    console.table(err.args);
+    console.groupEnd();
+    throw err;
+  }
+};
+
 type CString = { ptr: number; len: number };
 
 const NULL_CSTRING: CString = { ptr: 0, len: 0 };
@@ -83,7 +150,7 @@ export const CryptoSDK = {
   // No-arg helpers
   // ---------------------------------------------------------------------------
   generateMnemonic(): string {
-    return consumeCString('wallet_generate_mnemonic', ffi('wallet_generate_mnemonic')());
+    return consumeCString('wallet_generate_mnemonic', callFfi('wallet_generate_mnemonic', []));
   },
 
   freeGlobalSession(): void {
@@ -96,7 +163,10 @@ export const CryptoSDK = {
   verifyMnemonic(mnemonic: string): string {
     const m = passCString(mnemonic);
     try {
-      return consumeCString('wallet_verify_mnemonic', ffi('wallet_verify_mnemonic')(m.ptr));
+      return consumeCString(
+        'wallet_verify_mnemonic',
+        callFfi('wallet_verify_mnemonic', [m.ptr], ['mnemonic']),
+      );
     } finally {
       freeCString(m);
     }
@@ -105,7 +175,10 @@ export const CryptoSDK = {
   hashTypedDataV4(typedDataJson: string): string {
     const d = passCString(typedDataJson);
     try {
-      return consumeCString('wallet_hash_typed_data_v4', ffi('wallet_hash_typed_data_v4')(d.ptr));
+      return consumeCString(
+        'wallet_hash_typed_data_v4',
+        callFfi('wallet_hash_typed_data_v4', [d.ptr], ['typedDataJson']),
+      );
     } finally {
       freeCString(d);
     }
@@ -114,7 +187,10 @@ export const CryptoSDK = {
   migrateVaultAddresses(vaultJson: string): string {
     const v = passCString(vaultJson);
     try {
-      return consumeCString('wallet_migrate_vault_addresses', ffi('wallet_migrate_vault_addresses')(v.ptr));
+      return consumeCString(
+        'wallet_migrate_vault_addresses',
+        callFfi('wallet_migrate_vault_addresses', [v.ptr], ['vaultJson']),
+      );
     } finally {
       freeCString(v);
     }
@@ -127,7 +203,10 @@ export const CryptoSDK = {
     const c = passCString(args.chain);
     const a = passCString(args.address);
     try {
-      return consumeCString('wallet_verify_address', ffi('wallet_verify_address')(c.ptr, a.ptr));
+      return consumeCString(
+        'wallet_verify_address',
+        callFfi('wallet_verify_address', [c.ptr, a.ptr], ['chain', 'address']),
+      );
     } finally {
       freeCString(c);
       freeCString(a);
@@ -139,7 +218,10 @@ export const CryptoSDK = {
     const c = passCString(args.chain);
     const p = passCString(args.privateKey);
     try {
-      return consumeCString('wallet_verify_private_key', ffi('wallet_verify_private_key')(c.ptr, p.ptr));
+      return consumeCString(
+        'wallet_verify_private_key',
+        callFfi('wallet_verify_private_key', [c.ptr, p.ptr], ['chain', 'privateKey']),
+      );
     } finally {
       freeCString(c);
       freeCString(p);
@@ -151,7 +233,10 @@ export const CryptoSDK = {
     const i = passCString(args.authInput);
     const t = passCString(args.authType);
     try {
-      return consumeCString('wallet_verify_auth', ffi('wallet_verify_auth')(v.ptr, i.ptr, t.ptr));
+      return consumeCString(
+        'wallet_verify_auth',
+        callFfi('wallet_verify_auth', [v.ptr, i.ptr, t.ptr], ['vaultJson', 'authInput', 'authType']),
+      );
     } finally {
       freeCString(v);
       freeCString(i);
@@ -167,7 +252,10 @@ export const CryptoSDK = {
     const i = passCString(args.authInput);
     const t = passCString(args.authType);
     try {
-      return consumeCString('wallet_reveal_mnemonic', ffi('wallet_reveal_mnemonic')(v.ptr, i.ptr, t.ptr));
+      return consumeCString(
+        'wallet_reveal_mnemonic',
+        callFfi('wallet_reveal_mnemonic', [v.ptr, i.ptr, t.ptr], ['vaultJson', 'authInput', 'authType']),
+      );
     } finally {
       freeCString(v);
       freeCString(i);
@@ -180,7 +268,10 @@ export const CryptoSDK = {
     const i = passCString(args.authInput);
     const t = passCString(args.authType);
     try {
-      return consumeCString('wallet_reveal_private_key', ffi('wallet_reveal_private_key')(v.ptr, i.ptr, t.ptr));
+      return consumeCString(
+        'wallet_reveal_private_key',
+        callFfi('wallet_reveal_private_key', [v.ptr, i.ptr, t.ptr], ['vaultJson', 'authInput', 'authType']),
+      );
     } finally {
       freeCString(v);
       freeCString(i);
@@ -208,7 +299,11 @@ export const CryptoSDK = {
     try {
       return consumeCString(
         'wallet_create_wallet_from_mnemonic',
-        ffi('wallet_create_wallet_from_mnemonic')(m.ptr, 0, bk.ptr, bi.ptr, bl.ptr, p.ptr),
+        callFfi(
+          'wallet_create_wallet_from_mnemonic',
+          [m.ptr, 0, bk.ptr, bi.ptr, bl.ptr, p.ptr],
+          ['mnemonic', 'slot_b (currently NULL — suspect: password belongs here?)', 'biometricKey', 'biometricId', 'biometricLabel', 'password'],
+        ),
       );
     } finally {
       freeCString(m);
@@ -242,7 +337,11 @@ export const CryptoSDK = {
     try {
       return consumeCString(
         'wallet_create_vault_from_private_key',
-        ffi('wallet_create_vault_from_private_key')(pk.ptr, c.ptr, bk.ptr, bi.ptr, bl.ptr, p.ptr),
+        callFfi(
+          'wallet_create_vault_from_private_key',
+          [pk.ptr, c.ptr, bk.ptr, bi.ptr, bl.ptr, p.ptr],
+          ['privateKey', 'chain', 'biometricKey', 'biometricId', 'biometricLabel', 'password'],
+        ),
       );
     } finally {
       freeCString(pk);
@@ -266,7 +365,11 @@ export const CryptoSDK = {
     try {
       return consumeCString(
         'wallet_create_vault_from_private_key_with_session',
-        ffi('wallet_create_vault_from_private_key_with_session')(a.ptr, p.ptr, pk.ptr),
+        callFfi(
+          'wallet_create_vault_from_private_key_with_session',
+          [a.ptr, p.ptr, pk.ptr],
+          ['appKeystoreJson', 'password', 'privateKey'],
+        ),
       );
     } finally {
       freeCString(a);
@@ -280,7 +383,10 @@ export const CryptoSDK = {
     const v = passCString(args.vaultJson);
     const a = passCString(args.appKeystoreJson);
     try {
-      return consumeCString('wallet_add_vault_with_session', ffi('wallet_add_vault_with_session')(v.ptr, a.ptr));
+      return consumeCString(
+        'wallet_add_vault_with_session',
+        callFfi('wallet_add_vault_with_session', [v.ptr, a.ptr], ['vaultJson', 'appKeystoreJson']),
+      );
     } finally {
       freeCString(v);
       freeCString(a);
@@ -294,7 +400,11 @@ export const CryptoSDK = {
     try {
       return consumeCString(
         'wallet_change_vault_password',
-        ffi('wallet_change_vault_password')(v.ptr, o.ptr, n.ptr),
+        callFfi(
+          'wallet_change_vault_password',
+          [v.ptr, o.ptr, n.ptr],
+          ['vaultJson', 'oldPassword', 'newPassword'],
+        ),
       );
     } finally {
       freeCString(v);
@@ -322,7 +432,11 @@ export const CryptoSDK = {
     try {
       return consumeCString(
         'wallet_migrate_legacy_vault',
-        ffi('wallet_migrate_legacy_vault')(e.ptr, p.ptr, bk.ptr, bi.ptr, bl.ptr, ex.ptr),
+        callFfi(
+          'wallet_migrate_legacy_vault',
+          [e.ptr, p.ptr, bk.ptr, bi.ptr, bl.ptr, ex.ptr],
+          ['legacyEnvelope', 'password', 'biometricKey', 'biometricId', 'biometricLabel', 'extraField'],
+        ),
       );
     } finally {
       freeCString(e);
@@ -350,7 +464,11 @@ export const CryptoSDK = {
     try {
       return consumeCString(
         'wallet_add_biometric_access_to_vault_with_global_session',
-        ffi('wallet_add_biometric_access_to_vault_with_global_session')(v.ptr, k.ptr, bi.ptr, bl.ptr),
+        callFfi(
+          'wallet_add_biometric_access_to_vault_with_global_session',
+          [v.ptr, k.ptr, bi.ptr, bl.ptr],
+          ['vaultJson', 'encKekApp', 'bioId', 'bioLabel'],
+        ),
       );
     } finally {
       freeCString(v);
@@ -377,15 +495,14 @@ export const CryptoSDK = {
     const b = passCString(xpubBtc);
     const m = passCString(mnemonic);
     try {
-      const fn = ffi('wallet_generate_address_from_xpub') as (
-        a: number,
-        b: number,
-        c: number,
-        d: number,
-        e: number,
-        f: bigint,
-      ) => number;
-      return consumeCString('wallet_generate_address_from_xpub', fn(e.ptr, t.ptr, b.ptr, m.ptr, index, chainId));
+      return consumeCString(
+        'wallet_generate_address_from_xpub',
+        callFfi(
+          'wallet_generate_address_from_xpub',
+          [e.ptr, t.ptr, b.ptr, m.ptr, index, chainId],
+          ['xpubEth', 'xpubTron', 'xpubBtc', 'mnemonic', 'index', 'chainId'],
+        ),
+      );
     } finally {
       freeCString(e);
       freeCString(t);
@@ -411,18 +528,13 @@ export const CryptoSDK = {
     const b = passCString(xpubBtc);
     const m = passCString(mnemonic);
     try {
-      const fn = ffi('wallet_generate_addresses_from_xpub_bulk') as (
-        a: number,
-        b: number,
-        c: number,
-        d: number,
-        e: number,
-        f: number,
-        g: bigint,
-      ) => number;
       return consumeCString(
         'wallet_generate_addresses_from_xpub_bulk',
-        fn(e.ptr, t.ptr, b.ptr, m.ptr, startIndex, count, chainId),
+        callFfi(
+          'wallet_generate_addresses_from_xpub_bulk',
+          [e.ptr, t.ptr, b.ptr, m.ptr, startIndex, count, chainId],
+          ['xpubEth', 'xpubTron', 'xpubBtc', 'mnemonic', 'startIndex', 'count', 'chainId'],
+        ),
       );
     } finally {
       freeCString(e);
@@ -454,7 +566,11 @@ export const CryptoSDK = {
     try {
       return consumeCString(
         'wallet_sign_tx_secure',
-        ffi('wallet_sign_tx_secure')(c.ptr, td.ptr, v.ptr, ai.ptr, at.ptr, indexN, tf.ptr),
+        callFfi(
+          'wallet_sign_tx_secure',
+          [c.ptr, td.ptr, v.ptr, ai.ptr, at.ptr, indexN, tf.ptr],
+          ['chain', 'txData', 'vaultJson', 'authInput', 'authType', 'indexN', 'txFields'],
+        ),
       );
     } finally {
       freeCString(c);
@@ -485,7 +601,11 @@ export const CryptoSDK = {
     try {
       return consumeCString(
         'wallet_sign_message_secure',
-        ffi('wallet_sign_message_secure')(c.ptr, md.ptr, mt.ptr, v.ptr, ai.ptr, at.ptr, indexN),
+        callFfi(
+          'wallet_sign_message_secure',
+          [c.ptr, md.ptr, mt.ptr, v.ptr, ai.ptr, at.ptr, indexN],
+          ['chain', 'msgData', 'msgType', 'vaultJson', 'authInput', 'authType', 'indexN'],
+        ),
       );
     } finally {
       freeCString(c);
