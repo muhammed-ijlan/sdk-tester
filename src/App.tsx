@@ -9,7 +9,7 @@ export const App = () => (
       <div>
         <h1>rust_wallet_sdk — Tester</h1>
         <div className="subtitle">
-          Standalone playground for the WASM bindings under <code>./pkg/</code>. Drop a fresh pkg/ folder in the bar
+          Direct playground for the functions exported by <code>./pkg/</code>. Drop a fresh pkg/ folder in the bar
           above to hot-swap the build, or replace the files on disk for a permanent change.
         </div>
       </div>
@@ -20,7 +20,7 @@ export const App = () => (
         <div className="toc-title">{section.title}</div>
         {section.fns.map(fn => (
           <a key={fn.name} href={`#${fn.name}`}>
-            {fn.name.replace(/^CryptoSDK\./, '')}
+            {fn.name}
           </a>
         ))}
       </nav>
