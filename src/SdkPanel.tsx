@@ -1,5 +1,27 @@
 import type { SdkFn } from './functions';
-import { useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+
+// Auto-growing textarea: resize on every change so the full content is
+// visible without an inner scrollbar. Pasted vault JSON or long mnemonics
+// expand the box to fit instead of being clipped.
+const AutoTextarea = (
+  props: React.TextareaHTMLAttributes<HTMLTextAreaElement>,
+) => {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const resize = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+  useLayoutEffect(resize, [resize, props.value]);
+  useEffect(() => {
+    const onWinResize = () => resize();
+    window.addEventListener('resize', onWinResize);
+    return () => window.removeEventListener('resize', onWinResize);
+  }, [resize]);
+  return <textarea ref={ref} {...props} />;
+};
 
 type ErrorDetails = {
   fnName: string;
@@ -22,6 +44,44 @@ const formatResult = (value: unknown): string => {
   return JSON.stringify(value, null, 2);
 };
 
+// Field names that the SDK expects to receive as INNER nested JSON strings.
+// If the user pastes the wrapper {"vault_json":"{...}"} or the fragment
+// "vault_json":"{...}" we unwrap it automatically so they don't keep hitting
+// 'invalid type: string "vault_json", expected struct VaultV2'.
+const NESTED_JSON_FIELDS = new Set([
+  'vaultJson', 'vault_json',
+  'appKeystoreJson', 'app_keystore_json', 'app_keystore',
+  'encEnvelope', 'enc_envelope',
+  'legacyEnvelope',
+]);
+
+const normalizeNestedJson = (raw: string): string => {
+  const trimmed = raw.trim().replace(/,\s*$/, '');
+  if (!trimmed) return raw;
+  // 1. Already a JSON object/string at top level.
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      // Wrapper that contains a nested JSON-as-string field.
+      for (const key of ['vault_json', 'app_keystore', 'enc_envelope']) {
+        const v = (parsed as Record<string, unknown>)[key];
+        if (typeof v === 'string') return v;
+      }
+      return trimmed; // already inner
+    }
+    if (typeof parsed === 'string') return parsed; // outer was an escaped string
+  } catch { /* not a top-level JSON value */ }
+  // 2. Fragment shape: "vault_json":"{...}" — wrap and re-parse.
+  try {
+    const wrapped = '{' + trimmed.replace(/,\s*$/, '') + '}';
+    const parsed = JSON.parse(wrapped) as Record<string, unknown>;
+    for (const v of Object.values(parsed)) {
+      if (typeof v === 'string') return v;
+    }
+  } catch { /* not a fragment we can fix */ }
+  return raw;
+};
+
 const redactFields = (fields: Record<string, string>, specs: SdkFn['fields']): Record<string, string> => {
   const isSecret = new Map(specs.map(f => [f.name, f.type === 'password']));
   return Object.fromEntries(
@@ -38,8 +98,21 @@ export const SdkPanel = ({ fn }: { fn: SdkFn }) => {
 
   const run = async () => {
     setRunning(true);
+    // Normalize any wrapped / fragment shapes the user pasted into nested-JSON
+    // fields before calling. Update the visible field too so they see what was
+    // actually sent (transparent fix).
+    const normalized: Record<string, string> = { ...values };
+    let mutated = false;
+    for (const f of fn.fields) {
+      if (NESTED_JSON_FIELDS.has(f.name) && f.type === 'textarea') {
+        const v = values[f.name];
+        const n = normalizeNestedJson(v);
+        if (n !== v) { normalized[f.name] = n; mutated = true; }
+      }
+    }
+    if (mutated) setValues(normalized);
     try {
-      const raw = await fn.call(values);
+      const raw = await fn.call(normalized);
       setResult({ ok: true, value: formatResult(raw) });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -106,7 +179,7 @@ export const SdkPanel = ({ fn }: { fn: SdkFn }) => {
                   {field.optional && <span className="optional"> (optional)</span>}
                 </label>
                 {field.type === 'textarea' ? (
-                  <textarea
+                  <AutoTextarea
                     id={id}
                     value={values[field.name]}
                     placeholder={field.placeholder}

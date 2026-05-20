@@ -307,6 +307,9 @@ body {
 
 .field textarea {
   min-height: 64px;
+  overflow: hidden;
+  /* height is set imperatively in JS to match content; this also avoids
+     the visible scrollbar that 'overflow: auto' would leave behind. */
 }
 
 .actions {
@@ -349,8 +352,8 @@ button.secondary:hover {
   font-size: 12px;
   white-space: pre-wrap;
   word-break: break-all;
-  max-height: 280px;
-  overflow: auto;
+  /* no max-height — long outputs render in full so you can read them
+     without scrolling inside a small box. Page scroll handles the rest. */
 }
 
 .output.error {
@@ -508,8 +511,8 @@ button.secondary:hover {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
   color: #c5c9d0;
-  max-height: 220px;
-  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .error-stack summary {
@@ -529,8 +532,6 @@ button.secondary:hover {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
   color: #c5c9d0;
-  max-height: 260px;
-  overflow: auto;
   white-space: pre-wrap;
   word-break: break-all;
 }

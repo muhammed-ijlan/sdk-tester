@@ -332,8 +332,8 @@ export const CryptoSDK = {
         'wallet_create_vault_from_private_key',
         callFfi(
           'wallet_create_vault_from_private_key',
-          [pk.ptr, c.ptr, bk.ptr, bi.ptr, bl.ptr, p.ptr],
-          ['privateKey', 'chain', 'biometricKey', 'biometricId', 'biometricLabel', 'password'],
+          [pk.ptr, c.ptr, p.ptr, bk.ptr, bi.ptr, bl.ptr],
+          ['privateKey', 'chain', 'password', 'biometricKey', 'biometricId', 'biometricLabel'],
         ),
       );
     } finally {

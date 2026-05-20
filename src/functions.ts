@@ -100,7 +100,8 @@ const CRYPTO_SDK_FNS: SdkFn[] = [
   },
   {
     name: 'CryptoSDK.createVaultFromPrivateKeyWithSession',
-    description: 'Create a vault from a private key reusing an unlocked app-keystore session.',
+    description:
+      'Create a vault from a private key reusing an unlocked app-keystore session. ⚠ requires an active session — call verifyAuth or createNewVaultWithSession first to unlock.',
     signature: 'CryptoSDK.createVaultFromPrivateKeyWithSession({ appKeystoreJson, password, privateKey })',
     fields: [
       { name: 'appKeystoreJson', type: 'textarea' },
@@ -116,7 +117,8 @@ const CRYPTO_SDK_FNS: SdkFn[] = [
   },
   {
     name: 'CryptoSDK.addVaultWithSession',
-    description: 'Attach an existing vault JSON onto an active app-keystore session.',
+    description:
+      'Attach an existing vault JSON onto an active app-keystore session. ⚠ requires an active session — call verifyAuth on the keystore first.',
     signature: 'CryptoSDK.addVaultWithSession({ vaultJson, appKeystoreJson })',
     fields: [
       { name: 'vaultJson', type: 'textarea' },
@@ -164,7 +166,8 @@ const CRYPTO_SDK_FNS: SdkFn[] = [
   },
   {
     name: 'CryptoSDK.migrateVaultAddresses',
-    description: 'Re-derive all supported chain addresses from an existing vault.',
+    description:
+      'Re-derive addresses from a legacy v1 vault. ⚠ this is the v1-migration variant — fails on v2 vaults with "Decrypt global access v1 ... failed". For v2 vaults use the wbindgen migrateVaultAddresses(vault_json, auth_input, auth_type) below.',
     signature: 'CryptoSDK.migrateVaultAddresses(vaultJson)',
     fields: [{ name: 'vaultJson', type: 'textarea' }],
     call: v => CryptoSDK.migrateVaultAddresses(v.vaultJson),
@@ -291,11 +294,12 @@ const CRYPTO_SDK_FNS: SdkFn[] = [
   },
   {
     name: 'CryptoSDK.signTxSecure',
-    description: 'Unified secure transaction signing. authType is "password" or a biometric method id.',
+    description:
+      'Unified secure transaction signing. txData is raw hex (e.g. 0xdeadbeef or RLP-encoded payload), NOT JSON. authType is "password" or a biometric method id.',
     signature: 'CryptoSDK.signTxSecure({ chain, txData, vaultJson, authInput, authType, indexN, txFields? })',
     fields: [
       { name: 'chain', type: 'text', defaultValue: 'eth' },
-      { name: 'txData', type: 'textarea' },
+      { name: 'txData', type: 'textarea', placeholder: '0xdeadbeef (raw hex payload)' },
       { name: 'vaultJson', type: 'textarea' },
       { name: 'authInput', type: 'password' },
       { name: 'authType', type: 'text', defaultValue: 'password' },
@@ -315,12 +319,13 @@ const CRYPTO_SDK_FNS: SdkFn[] = [
   },
   {
     name: 'CryptoSDK.signMessageSecure',
-    description: 'Sign a personal or typed-data message via the unified secure path.',
+    description:
+      'Sign a personal or typed-data message. msg_type must be "personal_sign" (NOT "personal") or "typed_data" — anything else is rejected with "Unknown message type".',
     signature: 'CryptoSDK.signMessageSecure({ chain, msgData, msgType, vaultJson, authInput, authType, indexN })',
     fields: [
       { name: 'chain', type: 'text', defaultValue: 'eth' },
       { name: 'msgData', type: 'textarea' },
-      { name: 'msgType', type: 'text', defaultValue: 'personal', placeholder: 'personal | typed_data' },
+      { name: 'msgType', type: 'text', defaultValue: 'personal_sign', placeholder: 'personal_sign | typed_data' },
       { name: 'vaultJson', type: 'textarea' },
       { name: 'authInput', type: 'password' },
       { name: 'authType', type: 'text', defaultValue: 'password' },
@@ -546,12 +551,12 @@ const RAW_SDK_FNS: SdkFn[] = [
   },
   {
     name: 'signTxSecure',
-    description: 'Secure sign transaction (unified).',
+    description: 'Secure sign transaction (unified). tx_data is raw hex (e.g. 0xdeadbeef), NOT JSON.',
     signature:
       'signTxSecure(chain, tx_data, vault_json, auth_input, auth_type, index_n, tx_fields?): string',
     fields: [
       { name: 'chain', type: 'text', defaultValue: 'eth' },
-      { name: 'tx_data', type: 'textarea' },
+      { name: 'tx_data', type: 'textarea', placeholder: '0xdeadbeef (raw hex payload)' },
       { name: 'vault_json', type: 'textarea' },
       { name: 'auth_input', type: 'password' },
       { name: 'auth_type', type: 'text', defaultValue: 'password' },
@@ -571,7 +576,8 @@ const RAW_SDK_FNS: SdkFn[] = [
   },
   {
     name: 'signTxWithSession',
-    description: 'Sign a transaction using a session (unlocked with password).',
+    description:
+      'Sign a transaction using a session (unlocked with password). ⚠ the app_keystore_json must already be unlocked in the active session — call createNewVaultWithSession or verifyAuth first.',
     signature:
       'signTxWithSession(app_keystore_json, password, chain, tx_data, vault_json, index_n, tx_fields?): string',
     fields: [
@@ -596,13 +602,14 @@ const RAW_SDK_FNS: SdkFn[] = [
   },
   {
     name: 'signMessageSecure',
-    description: 'Secure sign message (personal / typed data).',
+    description:
+      'Secure sign message. msg_type must be "personal_sign" (NOT "personal") or "typed_data".',
     signature:
       'signMessageSecure(chain, msg_data, msg_type, vault_json, auth_input, auth_type, index_n): string',
     fields: [
       { name: 'chain', type: 'text', defaultValue: 'eth' },
       { name: 'msg_data', type: 'textarea' },
-      { name: 'msg_type', type: 'text', defaultValue: 'personal', placeholder: 'personal | typed_data' },
+      { name: 'msg_type', type: 'text', defaultValue: 'personal_sign', placeholder: 'personal_sign | typed_data' },
       { name: 'vault_json', type: 'textarea' },
       { name: 'auth_input', type: 'password' },
       { name: 'auth_type', type: 'text', defaultValue: 'password' },
