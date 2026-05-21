@@ -58,35 +58,28 @@ const CRYPTO_SDK_FNS: SdkFn[] = [
   {
     name: 'CryptoSDK.createWalletFromMnemonic',
     description: 'Create a vault from a mnemonic (wallet_create_wallet_from_mnemonic).',
-    signature:
-      'CryptoSDK.createWalletFromMnemonic({ mnemonic, password, biometricKey?, biometricId?, biometricLabel? })',
+    signature: 'CryptoSDK.createWalletFromMnemonic({ mnemonic, password, biometricKey? })',
     fields: [
       { name: 'mnemonic', type: 'textarea' },
       { name: 'password', type: 'password' },
       { name: 'biometricKey', type: 'text', optional: true },
-      { name: 'biometricId', type: 'text', optional: true },
-      { name: 'biometricLabel', type: 'text', optional: true },
     ],
     call: v =>
       CryptoSDK.createWalletFromMnemonic({
         mnemonic: v.mnemonic,
         password: v.password,
         biometricKey: opt(v.biometricKey),
-        biometricId: opt(v.biometricId),
-        biometricLabel: opt(v.biometricLabel),
       }),
   },
   {
     name: 'CryptoSDK.createVaultFromPrivateKey',
     description: 'Create a vault from a raw private key (wallet_create_vault_from_private_key).',
-    signature: 'CryptoSDK.createVaultFromPrivateKey({ chain, privateKey, password, biometric* })',
+    signature: 'CryptoSDK.createVaultFromPrivateKey({ chain, privateKey, password, biometricKey? })',
     fields: [
       { name: 'chain', type: 'text', defaultValue: 'eth', placeholder: 'eth | tron | btc' },
       { name: 'privateKey', type: 'textarea' },
       { name: 'password', type: 'password' },
       { name: 'biometricKey', type: 'text', optional: true },
-      { name: 'biometricId', type: 'text', optional: true },
-      { name: 'biometricLabel', type: 'text', optional: true },
     ],
     call: v =>
       CryptoSDK.createVaultFromPrivateKey({
@@ -94,14 +87,12 @@ const CRYPTO_SDK_FNS: SdkFn[] = [
         privateKey: v.privateKey,
         password: v.password,
         biometricKey: opt(v.biometricKey),
-        biometricId: opt(v.biometricId),
-        biometricLabel: opt(v.biometricLabel),
       }),
   },
   {
     name: 'CryptoSDK.createVaultFromPrivateKeyWithSession',
     description:
-      'Create a vault from a private key reusing an unlocked app-keystore session. ⚠ requires an active session — call verifyAuth or createNewVaultWithSession first to unlock.',
+      'Create a vault from a private key reusing an unlocked app-keystore session. ⚠ this C-FFI export still exists in the new build, but the wbindgen helpers that set up a session (createAppKeystore, createNewVaultWithSession) have been removed — you would have to drive the session via the raw wallet_* exports.',
     signature: 'CryptoSDK.createVaultFromPrivateKeyWithSession({ appKeystoreJson, password, privateKey })',
     fields: [
       { name: 'appKeystoreJson', type: 'textarea' },
@@ -118,7 +109,7 @@ const CRYPTO_SDK_FNS: SdkFn[] = [
   {
     name: 'CryptoSDK.addVaultWithSession',
     description:
-      'Attach an existing vault JSON onto an active app-keystore session. ⚠ requires an active session — call verifyAuth on the keystore first.',
+      'Attach an existing vault JSON onto an active app-keystore session. ⚠ requires an active session — the wbindgen helpers that bootstrap one were removed in this build.',
     signature: 'CryptoSDK.addVaultWithSession({ vaultJson, appKeystoreJson })',
     fields: [
       { name: 'vaultJson', type: 'textarea' },
@@ -144,7 +135,8 @@ const CRYPTO_SDK_FNS: SdkFn[] = [
   },
   {
     name: 'CryptoSDK.migrateLegacyVault',
-    description: 'Migrate a legacy vault envelope into the new vault format.',
+    description:
+      'Migrate a legacy vault envelope into the new vault format. The C-FFI export still takes 6 pointer args in the new build, so the biometric trio + extraField is preserved here even though the wbindgen surface dropped biometric_id/biometric_label.',
     signature: 'CryptoSDK.migrateLegacyVault({ legacyEnvelope, password, biometric*, extraField? })',
     fields: [
       { name: 'legacyEnvelope', type: 'textarea' },
@@ -229,20 +221,17 @@ const CRYPTO_SDK_FNS: SdkFn[] = [
   },
   {
     name: 'CryptoSDK.addBiometricAccessToVaultWithGlobalSession',
-    description: 'Attach biometric (WebAuthn PRF) access to an existing vault using the global session.',
-    signature: 'CryptoSDK.addBiometricAccessToVaultWithGlobalSession({ vaultJson, encKekApp, bioId, bioLabel })',
+    description:
+      'Attach biometric access to an existing vault using the global session. The new C-FFI takes only 2 pointer args, mirroring the wbindgen-side simplification that dropped bio_id / bio_label — INFERRED as (vaultJson, biometricKey).',
+    signature: 'CryptoSDK.addBiometricAccessToVaultWithGlobalSession({ vaultJson, biometricKey })',
     fields: [
       { name: 'vaultJson', type: 'textarea' },
-      { name: 'encKekApp', type: 'textarea' },
-      { name: 'bioId', type: 'text' },
-      { name: 'bioLabel', type: 'text' },
+      { name: 'biometricKey', type: 'text' },
     ],
     call: v =>
       CryptoSDK.addBiometricAccessToVaultWithGlobalSession({
         vaultJson: v.vaultJson,
-        encKekApp: v.encKekApp,
-        bioId: v.bioId,
-        bioLabel: v.bioLabel,
+        biometricKey: v.biometricKey,
       }),
   },
   {
@@ -375,54 +364,24 @@ const RAW_SDK_FNS: SdkFn[] = [
   {
     name: 'createNewVault',
     description:
-      'Create NEW vault (random mnemonic). Optionally accepts biometric information — provide all three biometric fields together.',
-    signature: 'createNewVault(password, biometric_key?, biometric_id?, biometric_label?): string',
+      'Create NEW vault (random mnemonic). Optionally accepts a biometric key to add biometric access during creation.',
+    signature: 'createNewVault(password, biometric_key?): string',
     fields: [
       { name: 'password', type: 'password' },
       { name: 'biometric_key', type: 'text', optional: true },
-      { name: 'biometric_id', type: 'text', optional: true },
-      { name: 'biometric_label', type: 'text', optional: true },
     ],
-    call: v =>
-      sdk.createNewVault(v.password, opt(v.biometric_key), opt(v.biometric_id), opt(v.biometric_label)),
-  },
-  {
-    name: 'createNewVaultWithSession',
-    description: 'Create a new vault using a session (unlocked with password).',
-    signature: 'createNewVaultWithSession(app_keystore_json, password): string',
-    fields: [
-      { name: 'app_keystore_json', type: 'textarea' },
-      { name: 'password', type: 'password' },
-    ],
-    call: v => sdk.createNewVaultWithSession(v.app_keystore_json, v.password),
+    call: v => sdk.createNewVault(v.password, opt(v.biometric_key)),
   },
   {
     name: 'createWalletFromMnemonic',
-    description: 'Import vault from mnemonic.',
-    signature:
-      'createWalletFromMnemonic(mnemonic, password, biometric_key?, biometric_id?, biometric_label?): string',
+    description: 'Import vault from mnemonic. Optionally accepts a biometric key.',
+    signature: 'createWalletFromMnemonic(mnemonic, password, biometric_key?): string',
     fields: [
       { name: 'mnemonic', type: 'textarea' },
       { name: 'password', type: 'password' },
       { name: 'biometric_key', type: 'text', optional: true },
-      { name: 'biometric_id', type: 'text', optional: true },
-      { name: 'biometric_label', type: 'text', optional: true },
     ],
-    call: v =>
-      sdk.createWalletFromMnemonic(
-        v.mnemonic,
-        v.password,
-        opt(v.biometric_key),
-        opt(v.biometric_id),
-        opt(v.biometric_label),
-      ),
-  },
-  {
-    name: 'createAppKeystore',
-    description: 'Create an app keystore for session management.',
-    signature: 'createAppKeystore(password): string',
-    fields: [{ name: 'password', type: 'password' }],
-    call: v => sdk.createAppKeystore(v.password),
+    call: v => sdk.createWalletFromMnemonic(v.mnemonic, v.password, opt(v.biometric_key)),
   },
   {
     name: 'createDeterministicWalletId',
@@ -443,13 +402,15 @@ const RAW_SDK_FNS: SdkFn[] = [
   },
   {
     name: 'decrypt',
-    description: 'Decrypt: turns vault JSON → text (mnemonic).',
-    signature: 'decrypt(enc_envelope, password): string',
+    description:
+      'Decrypt: turns vault JSON → text (mnemonic). auth_type is "password" or a biometric method id.',
+    signature: 'decrypt(enc_envelope, password, auth_type): string',
     fields: [
       { name: 'enc_envelope', type: 'textarea' },
       { name: 'password', type: 'password' },
+      { name: 'auth_type', type: 'text', defaultValue: 'password' },
     ],
-    call: v => sdk.decrypt(v.enc_envelope, v.password),
+    call: v => sdk.decrypt(v.enc_envelope, v.password, v.auth_type),
   },
   {
     name: 'utilEncryptString',
@@ -538,18 +499,6 @@ const RAW_SDK_FNS: SdkFn[] = [
     call: v => sdk.migrateVaultAddresses(v.vault_json, v.auth_input, v.auth_type),
   },
   {
-    name: 'addBiometricAccessWithSession',
-    description: 'Add biometric access to the app keystore.',
-    signature: 'addBiometricAccessWithSession(app_keystore_json, enc_kek_app, bio_id, bio_label): string',
-    fields: [
-      { name: 'app_keystore_json', type: 'textarea' },
-      { name: 'enc_kek_app', type: 'textarea' },
-      { name: 'bio_id', type: 'text' },
-      { name: 'bio_label', type: 'text' },
-    ],
-    call: v => sdk.addBiometricAccessWithSession(v.app_keystore_json, v.enc_kek_app, v.bio_id, v.bio_label),
-  },
-  {
     name: 'signTxSecure',
     description: 'Secure sign transaction (unified). tx_data is raw hex (e.g. 0xdeadbeef), NOT JSON.',
     signature:
@@ -570,32 +519,6 @@ const RAW_SDK_FNS: SdkFn[] = [
         v.vault_json,
         v.auth_input,
         v.auth_type,
-        num(v.index_n),
-        opt(v.tx_fields),
-      ),
-  },
-  {
-    name: 'signTxWithSession',
-    description:
-      'Sign a transaction using a session (unlocked with password). ⚠ the app_keystore_json must already be unlocked in the active session — call createNewVaultWithSession or verifyAuth first.',
-    signature:
-      'signTxWithSession(app_keystore_json, password, chain, tx_data, vault_json, index_n, tx_fields?): string',
-    fields: [
-      { name: 'app_keystore_json', type: 'textarea' },
-      { name: 'password', type: 'password' },
-      { name: 'chain', type: 'text', defaultValue: 'eth' },
-      { name: 'tx_data', type: 'textarea' },
-      { name: 'vault_json', type: 'textarea' },
-      { name: 'index_n', type: 'number', defaultValue: '0' },
-      { name: 'tx_fields', type: 'textarea', optional: true },
-    ],
-    call: v =>
-      sdk.signTxWithSession(
-        v.app_keystore_json,
-        v.password,
-        v.chain,
-        v.tx_data,
-        v.vault_json,
         num(v.index_n),
         opt(v.tx_fields),
       ),

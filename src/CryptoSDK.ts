@@ -275,65 +275,56 @@ export const CryptoSDK = {
   // ---------------------------------------------------------------------------
   // Vault lifecycle
   // ---------------------------------------------------------------------------
+  // The new pkg/ build narrows wallet_create_wallet_from_mnemonic to 4
+  // pointer args, matching the wbindgen drop of biometric_id / biometric_label.
   createWalletFromMnemonic(args: {
     mnemonic: string;
     password: string;
     biometricKey?: string | null;
-    biometricId?: string | null;
-    biometricLabel?: string | null;
   }): string {
-    const { mnemonic, password, biometricKey, biometricId, biometricLabel } = args;
-    const includeBio = nonEmpty(biometricKey) && nonEmpty(biometricId) && nonEmpty(biometricLabel);
+    const { mnemonic, password, biometricKey } = args;
     const m = passCString(mnemonic);
     const p = passCString(password);
-    const bk = passCString(includeBio ? biometricKey : null);
-    const bi = passCString(includeBio ? biometricId : null);
-    const bl = passCString(includeBio ? biometricLabel : null);
+    const bk = passCString(nonEmpty(biometricKey) ? biometricKey : null);
     try {
       return consumeCString(
         'wallet_create_wallet_from_mnemonic',
         callFfi(
           'wallet_create_wallet_from_mnemonic',
-          [m.ptr, p.ptr, bk.ptr, bi.ptr, bl.ptr, 0],
-          ['mnemonic', 'password', 'biometricKey', 'biometricId', 'biometricLabel', 'reserved'],
+          [m.ptr, p.ptr, bk.ptr, 0],
+          ['mnemonic', 'password', 'biometricKey', 'reserved'],
         ),
       );
     } finally {
       freeCString(m);
       freeCString(p);
       freeCString(bk);
-      freeCString(bi);
-      freeCString(bl);
     }
   },
 
-  // INFERRED — mirrors wallet_create_wallet_from_mnemonic with chain as a
-  // string ("eth" | "tron" | "btc") in slot b. Passing a numeric chain id
-  // here causes the SDK to read the integer as a pointer and report
-  // "Unsupported chain: <garbage>".
+  // INFERRED — chain is a string ("eth" | "tron" | "btc") in slot b. Passing
+  // a numeric chain id here causes the SDK to read the integer as a pointer
+  // and report "Unsupported chain: <garbage>". Arity reduced from 6 → 4 in
+  // the new build, mirroring the wbindgen drop of biometric_id /
+  // biometric_label.
   createVaultFromPrivateKey(args: {
     chain: string;
     privateKey: string;
     password: string;
     biometricKey?: string | null;
-    biometricId?: string | null;
-    biometricLabel?: string | null;
   }): string {
-    const { chain, privateKey, password, biometricKey, biometricId, biometricLabel } = args;
-    const includeBio = nonEmpty(biometricKey) && nonEmpty(biometricId) && nonEmpty(biometricLabel);
+    const { chain, privateKey, password, biometricKey } = args;
     const pk = passCString(privateKey);
     const c = passCString(chain);
     const p = passCString(password);
-    const bk = passCString(includeBio ? biometricKey : null);
-    const bi = passCString(includeBio ? biometricId : null);
-    const bl = passCString(includeBio ? biometricLabel : null);
+    const bk = passCString(nonEmpty(biometricKey) ? biometricKey : null);
     try {
       return consumeCString(
         'wallet_create_vault_from_private_key',
         callFfi(
           'wallet_create_vault_from_private_key',
-          [pk.ptr, c.ptr, p.ptr, bk.ptr, bi.ptr, bl.ptr],
-          ['privateKey', 'chain', 'password', 'biometricKey', 'biometricId', 'biometricLabel'],
+          [pk.ptr, c.ptr, p.ptr, bk.ptr],
+          ['privateKey', 'chain', 'password', 'biometricKey'],
         ),
       );
     } finally {
@@ -341,8 +332,6 @@ export const CryptoSDK = {
       freeCString(c);
       freeCString(p);
       freeCString(bk);
-      freeCString(bi);
-      freeCString(bl);
     }
   },
 
@@ -444,30 +433,27 @@ export const CryptoSDK = {
   // ---------------------------------------------------------------------------
   // Biometric access
   // ---------------------------------------------------------------------------
+  // INFERRED — arity reduced from 4 → 2 in the new build. Most plausible
+  // mapping after the wbindgen-side simplification is (vaultJson,
+  // biometricKey); the enc_kek_app / bio_id / bio_label trio was retired.
   addBiometricAccessToVaultWithGlobalSession(args: {
     vaultJson: string;
-    encKekApp: string;
-    bioId: string;
-    bioLabel: string;
+    biometricKey: string;
   }): string {
     const v = passCString(args.vaultJson);
-    const k = passCString(args.encKekApp);
-    const bi = passCString(args.bioId);
-    const bl = passCString(args.bioLabel);
+    const bk = passCString(args.biometricKey);
     try {
       return consumeCString(
         'wallet_add_biometric_access_to_vault_with_global_session',
         callFfi(
           'wallet_add_biometric_access_to_vault_with_global_session',
-          [v.ptr, k.ptr, bi.ptr, bl.ptr],
-          ['vaultJson', 'encKekApp', 'bioId', 'bioLabel'],
+          [v.ptr, bk.ptr],
+          ['vaultJson', 'biometricKey'],
         ),
       );
     } finally {
       freeCString(v);
-      freeCString(k);
-      freeCString(bi);
-      freeCString(bl);
+      freeCString(bk);
     }
   },
 

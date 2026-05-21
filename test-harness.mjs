@@ -64,14 +64,14 @@ const CryptoSDK = {
   revealMnemonic: ({ vaultJson, authInput, authType }) => { const v = passCString(vaultJson), i = passCString(authInput), t = passCString(authType); try { return consume(callFfi('wallet_reveal_mnemonic', [v.ptr, i.ptr, t.ptr])); } finally { freeCString(v); freeCString(i); freeCString(t); } },
   revealPrivateKey: ({ vaultJson, authInput, authType }) => { const v = passCString(vaultJson), i = passCString(authInput), t = passCString(authType); try { return consume(callFfi('wallet_reveal_private_key', [v.ptr, i.ptr, t.ptr])); } finally { freeCString(v); freeCString(i); freeCString(t); } },
   createWalletFromMnemonic: ({ mnemonic, password }) => {
-    const m = passCString(mnemonic), p = passCString(password), nk = passCString(null), ni = passCString(null), nl = passCString(null);
-    try { return consume(callFfi('wallet_create_wallet_from_mnemonic', [m.ptr, 0, nk.ptr, ni.ptr, nl.ptr, p.ptr])); }
-    finally { freeCString(m); freeCString(p); }
+    const m = passCString(mnemonic), p = passCString(password), nk = passCString(null);
+    try { return consume(callFfi('wallet_create_wallet_from_mnemonic', [m.ptr, p.ptr, nk.ptr, 0])); }
+    finally { freeCString(m); freeCString(p); freeCString(nk); }
   },
   createVaultFromPrivateKey: ({ chain, privateKey, password }) => {
-    const pk = passCString(privateKey), c = passCString(chain), p = passCString(password), nk = passCString(null), ni = passCString(null), nl = passCString(null);
-    try { return consume(callFfi('wallet_create_vault_from_private_key', [pk.ptr, c.ptr, nk.ptr, ni.ptr, nl.ptr, p.ptr])); }
-    finally { freeCString(pk); freeCString(c); freeCString(p); }
+    const pk = passCString(privateKey), c = passCString(chain), p = passCString(password), nk = passCString(null);
+    try { return consume(callFfi('wallet_create_vault_from_private_key', [pk.ptr, c.ptr, p.ptr, nk.ptr])); }
+    finally { freeCString(pk); freeCString(c); freeCString(p); freeCString(nk); }
   },
   createVaultFromPrivateKeyWithSession: ({ appKeystoreJson, password, privateKey }) => {
     const a = passCString(appKeystoreJson), p = passCString(password), pk = passCString(privateKey);
@@ -93,10 +93,10 @@ const CryptoSDK = {
     try { return consume(callFfi('wallet_migrate_legacy_vault', [e.ptr, p.ptr, nk.ptr, ni.ptr, nl.ptr, nx.ptr])); }
     finally { freeCString(e); freeCString(p); }
   },
-  addBiometricAccessToVaultWithGlobalSession: ({ vaultJson, encKekApp, bioId, bioLabel }) => {
-    const v = passCString(vaultJson), k = passCString(encKekApp), bi = passCString(bioId), bl = passCString(bioLabel);
-    try { return consume(callFfi('wallet_add_biometric_access_to_vault_with_global_session', [v.ptr, k.ptr, bi.ptr, bl.ptr])); }
-    finally { freeCString(v); freeCString(k); freeCString(bi); freeCString(bl); }
+  addBiometricAccessToVaultWithGlobalSession: ({ vaultJson, biometricKey }) => {
+    const v = passCString(vaultJson), bk = passCString(biometricKey);
+    try { return consume(callFfi('wallet_add_biometric_access_to_vault_with_global_session', [v.ptr, bk.ptr])); }
+    finally { freeCString(v); freeCString(bk); }
   },
   generateAddressFromXpub: ({ xpubEth, xpubTron, xpubBtc, mnemonic, index, chainId = 0n }) => {
     const e = passCString(xpubEth), t = passCString(xpubTron), b = passCString(xpubBtc), m = passCString(mnemonic ?? null);
@@ -140,8 +140,10 @@ let seedAppKeystore = '';
 const PASSWORD = 'TestPassword123!';
 try { seedMnemonic = CryptoSDK.generateMnemonic(); } catch {}
 // CryptoSDK.createWalletFromMnemonic panics — use the camelCase binding to seed the vault
-try { seedVault = bindings.createWalletFromMnemonic(seedMnemonic, PASSWORD, null, null, null); } catch (e) { console.error('seed createWalletFromMnemonic failed:', e?.message); }
-try { seedAppKeystore = bindings.createAppKeystore(PASSWORD); } catch {}
+try { seedVault = bindings.createWalletFromMnemonic(seedMnemonic, PASSWORD, null); } catch (e) { console.error('seed createWalletFromMnemonic failed:', e?.message); }
+// createAppKeystore was removed from the wbindgen surface in the new pkg/
+// build; session-dependent tests below will report a missing-export error.
+seedAppKeystore = '';
 
 // CryptoSDK panel
 run('CryptoSDK.generateMnemonic',          () => CryptoSDK.generateMnemonic());
@@ -158,7 +160,7 @@ run('CryptoSDK.verifyPrivateKey',          () => CryptoSDK.verifyPrivateKey({ ch
 run('CryptoSDK.verifyAuth',                () => CryptoSDK.verifyAuth({ vaultJson: seedVault, authInput: PASSWORD, authType: 'password' }));
 run('CryptoSDK.revealMnemonic',            () => CryptoSDK.revealMnemonic({ vaultJson: seedVault, authInput: PASSWORD, authType: 'password' }));
 run('CryptoSDK.revealPrivateKey',          () => CryptoSDK.revealPrivateKey({ vaultJson: seedVault, authInput: PASSWORD, authType: 'password' }));
-run('CryptoSDK.addBiometricAccessToVaultWithGlobalSession', () => CryptoSDK.addBiometricAccessToVaultWithGlobalSession({ vaultJson: seedVault, encKekApp: 'aa', bioId: 'id', bioLabel: 'label' }));
+run('CryptoSDK.addBiometricAccessToVaultWithGlobalSession', () => CryptoSDK.addBiometricAccessToVaultWithGlobalSession({ vaultJson: seedVault, biometricKey: 'aa' }));
 run('CryptoSDK.generateAddressFromXpub',   () => CryptoSDK.generateAddressFromXpub({ xpubEth: '', xpubTron: '', xpubBtc: '', mnemonic: seedMnemonic, index: 0 }));
 run('CryptoSDK.generateAddressesFromXpubBulk', () => CryptoSDK.generateAddressesFromXpubBulk({ xpubEth: '', xpubTron: '', xpubBtc: '', mnemonic: seedMnemonic, startIndex: 0, count: 2 }));
 run('CryptoSDK.signTxSecure',              () => CryptoSDK.signTxSecure({ chain: 'eth', txData: '{}', vaultJson: seedVault, authInput: PASSWORD, authType: 'password', indexN: 0, txFields: null }));
@@ -174,14 +176,13 @@ run('raw.utilDecryptString',  () => bindings.utilDecryptString(packed, PASSWORD)
 run('raw.encrypt',            () => bindings.encrypt(seedMnemonic, PASSWORD));
 let env = '';
 try { env = bindings.encrypt(seedMnemonic, PASSWORD); } catch {}
-run('raw.decrypt',            () => bindings.decrypt(env, PASSWORD));
+run('raw.decrypt',            () => bindings.decrypt(env, PASSWORD, 'password'));
 run('raw.changePassword',     () => bindings.changePassword(env, PASSWORD, 'Other!'));
 run('raw.generateAddressFromXpub', () => bindings.generateAddressFromXpub('', '', '', seedMnemonic, 0, null));
 run('raw.generateMnemonic',   () => bindings.generateMnemonic());
-run('raw.createNewVault',     () => bindings.createNewVault(PASSWORD, null, null, null));
+run('raw.createNewVault',     () => bindings.createNewVault(PASSWORD, null));
 run('raw.verifyPassword',     () => bindings.verifyPassword(seedVault, PASSWORD));
 run('raw.createDeterministicWalletId', () => bindings.createDeterministicWalletId('seed'));
-run('raw.createAppKeystore',  () => bindings.createAppKeystore(PASSWORD));
 
 // ---------- Print report ----------
 const ok = results.filter(r => r.ok);
